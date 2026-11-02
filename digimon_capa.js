@@ -46,6 +46,13 @@ function dgWrap(text, max) {
   });
   if (line) out.push(line); return out;
 }
+// Digievoluciones en la carta: "Digievoluciona (PV): Greymon 3 · Birdramon 3 · GeoGreymon 4", en hasta 2 líneas.
+function dgEvoLines(d) {
+  const ev = d.evo || [];
+  if (!ev.length) return ["Sin digievolución"];
+  return dgWrap("Digievoluciona (PV): " + ev.map(t => `${t} ${dgEvoCost(d, t)}`).join(" · "), 52).slice(0, 2);
+}
+const dgEvoCost = (d, t) => d.evo_costs?.[t] ?? d.evolve_cost ?? 0;
 function dgCardSVG(c, art) {
   const d = c.d, [elEs, col] = DG_ELEM[d.types[0]] || DG_ELEM.Normal, [mvEs, mvCol] = DG_ELEM[d.move_type] || DG_ELEM.Normal;
   const lv = DG_LEVEL[c.dg?.lv] || "", str = +d.move_attack_strength || 0;
@@ -66,7 +73,7 @@ function dgCardSVG(c, art) {
   <g font-weight="700" fill="#fff"><circle cx="248" cy="282" r="20" fill="#c0392b" stroke="#fff" stroke-width="2"/><text x="248" y="289" font-size="19" text-anchor="middle">${d.health}</text>
   <circle cx="200" cy="282" r="20" fill="#2c3e50" stroke="#fff" stroke-width="2"/><text x="200" y="289" font-size="19" text-anchor="middle">${d.initiative}</text></g>
   <text x="200" y="314" font-size="0">.</text>${learn}
-  <text x="148" y="345" font-size="10" fill="#ffffffaa">${d.evolve_into ? dgEsc(`Evoluciona a ${d.evolve_into[0]} · ${d.evolve_cost} PV`) : "Sin evolución"}</text>
+  ${dgEvoLines(d).map((l, i) => `<text x="18" y="${341 + i * 12}" font-size="10" fill="#ffffffcc">${dgEsc(l)}</text>`).join("")}
   <rect x="14" y="368" width="272" height="146" rx="10" fill="#f6ecd9" stroke="${mvCol}" stroke-width="4"/>
   <text x="26" y="398" font-size="17" font-weight="700" fill="#222">${dgEsc(d.move_name)}</text>${dice}
   <text x="26" y="417" font-size="11" fill="${mvCol}" font-weight="700">${dgEsc(mvEs)} · Fuerza ${str}</text>
@@ -136,3 +143,33 @@ const _sinBegin = sinBegin;
 sinBegin = function (...a) { SIN_NEW.mode = "cards"; return _sinBegin.apply(this, a); };
 const _go = go;
 go = function (v) { return _go(v === "menu" ? "sin" : v); };
+
+/* ---------- Digievoluciones con costo propio ----------
+   Cada Digimon puede tener hasta 3 digievoluciones (hoja "digievoluciones" del cube), cada una con su costo en PV.
+   El Modo Cartas original usa un solo costo por carta: aquí se toma el de cada destino. Los descuentos del juego
+   (Comida Infundida a mitad de costo, habilidad de Entrenador −2) se aplican igual que antes. */
+function dgEvoCostFor(run, s, sp) {
+  const d = cardBySpecies(s.species)?.d, base = d ? dgEvoCost(d, sp) : s.card.cost;
+  return Math.max(0, base - (run.halfEvo ? Math.ceil(base / 2) : 0) - (sinFx?.(run, "pvUnlock") ? 2 : 0));
+}
+const dgEvoList = s => cardBySpecies(s.species)?.d?.evo || s.card.evo || [];
+cardEvoHTML = function (run) {
+  const rows = run.team.flatMap((s, i) => !s.card ? [] : dgEvoList(s).map(sp => {
+    const cost = dgEvoCostFor(run, s, sp), src = cardBySpecies(s.species)?.d?.evo_src?.[sp] || "";
+    return `<li><b>${esc(esSp(s.species))} → ${esc(esSp(sp))}</b><small>${cost} PV${run.halfEvo ? " (Comida Infundida)" : ""}${/Propuesta/.test(src) ? " · propuesta" : ""}</small>
+      <button class="btn" data-act="cbevolve" data-member="${i}" data-sp="${esc(sp)}" ${run.pv >= cost && sinMapAction(run) && cardBySpecies(sp) ? "" : "disabled"}>Digievolucionar</button></li>`;
+  }));
+  return rows.length ? `<h2>Digievolucionar (Puntos de Viaje)</h2><ul class="sin-objects">${rows.join("")}</ul>` : "";
+};
+cardEvolve = function (member, sp) {
+  const run = ST.sin.run, s = run.team[member], card = cardBySpecies(sp);
+  if (!s?.card || !card || !dgEvoList(s).includes(sp) || !sinMapAction(run)) return;
+  const cost = dgEvoCostFor(run, s, sp);
+  if (run.pv < cost) return;
+  run.pv -= cost; delete run.halfEvo;
+  const old = s.card.sig, from = s.species;
+  Object.assign(s, cardSet({...s, species: card.d.sp}, card), {species: card.d.sp, hpNow: undefined, status: ""});
+  if ((s.cmoves || []).length < 2 && !s.cmoves.some(m => m.name === old.name)) s.cmoves.push(old);
+  run.notice = `¡${esSp(from)} digievolucionó en ${esSp(s.species)}! Se restauró por completo.`;
+  sinSave(); sinUpdateTurn();
+};

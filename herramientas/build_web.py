@@ -42,6 +42,12 @@ def level(name):
 
 
 names = {r[1] for r in rows}
+# Digievoluciones (hoja "digievoluciones", hasta 3 por Digimon con su costo en PV). Si la hoja no existe, se usa evolve_into.
+EVO = {}
+if "digievoluciones" in wb.sheetnames:
+    for e in wb["digievoluciones"].iter_rows(min_row=2, values_only=True):
+        if e[0] and e[2] in names:
+            EVO.setdefault(e[0], []).append((e[2], int(e[4] or 1), e[5] or ""))
 pre = {}
 for r in rows:
     if r[25]:
@@ -56,10 +62,12 @@ for i, r in enumerate(rows):
     tier_key = (r[35] or "weak").lower()
     tier, tag, enc = TIER.get(tier_key, TIER["weak"])
     learn = [ELEM.get((m or "neutral").lower(), "Normal") for m in r[21:25]]
-    evo = [r[25]] if r[25] and r[25] in names else []
+    evo_rows = EVO.get(name) or ([(r[25], int(r[26] or 1), "Cube (original)")] if r[25] and r[25] in names else [])
+    evo = [e[0] for e in evo_rows]
     d = {"pokedex_name": name, "internal_name": name, "health": int(r[19]), "initiative": int(r[18]),
          "types": [ELEM.get(elem, "Normal")], "moves": learn, "evolve_into": evo or None,
-         "evolve_cost": int(r[26]) if evo and r[26] not in (None, "") else None, "encounter_tier": enc,
+         "evolve_cost": evo_rows[0][1] if evo_rows else None, "evo_costs": {e[0]: e[1] for e in evo_rows},
+         "evo_src": {e[0]: e[2] for e in evo_rows}, "encounter_tier": enc,
          "move_name": r[29] or "Placaje", "move_type": ELEM.get((r[30] or elem).lower(), "Normal"),
          "move_attack_strength": str(int(r[31] or 0)), "move_effect": r[32] or "", "sp": name, "evo": evo}
     meta = {"elem": elem, "attr": (r[40] or "").lower(), "img": image(name), "lv": level(name),

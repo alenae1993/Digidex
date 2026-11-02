@@ -14,6 +14,7 @@ Esta página **reutiliza el motor de DexPoke sin modificarlo**: mapa, turnos, pu
 | `digimon_datos.js` | **Generado.** Las 376 cartas: 96 débiles, 134 moderadas, 131 fuertes, 15 iniciales y 336 copias de evolución. |
 | `digimon_motor.js` | Registra cada Digimon como especie del motor y reemplaza los mazos de salvajes, iniciales y evoluciones. Se carga antes de `sinnoh.js`. |
 | `digimon_capa.js` | Lo demás. Se carga al final. |
+| `herramientas/evoluciones.py` | Escribe la hoja `digievoluciones` del cube: hasta 3 digievoluciones por Digimon con su costo en PV. Uso: `python evoluciones.py sinnoh_cube.xlsx digi.json` (después abre el cube en Excel y guárdalo, para que se recalculen las fórmulas). |
 | `herramientas/build_web.py` | Regenera `digimon_datos.js` desde el cube: `python build_web.py sinnoh_cube.xlsx ../digimon_datos.js`. Usa `digi.json`, los datos de la DigiDex. |
 | `docs/` | Campañas y economía (propuestas). |
 
@@ -33,6 +34,7 @@ Esta página **reutiliza el motor de DexPoke sin modificarlo**: mapa, turnos, pu
   - Luz y Oscuridad se ganan entre sí.
   - Neutral no tiene ventajas ni debilidades.
   - Ventaja: +2 de fuerza. Desventaja: −2.
+- **Digievoluciones:** hasta 3 por Digimon, cada una con su costo en PV. Salen de la hoja `digievoluciones` del cube; si la editas, vuelve a correr `build_web.py`.
 - **Iniciales:** los 15 del cube, 2 por pueblo (Canal tiene solo a Gomamon).
 - **Textos:** Bonguri → alimentos (Carne, Banana, Pescado Fresco, Manzana, Piña, Zanahoria, DigiProteína); Balls → Captura Básica, Mejorada, Avanzada y Ancestral.
 
