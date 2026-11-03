@@ -24,7 +24,11 @@ D = json.load(open(DIGI, encoding="utf-8"))["D"]
 byn = {norm(x["n"]): x for x in D}
 wb = openpyxl.load_workbook(CUBE, data_only=True)
 prop = {r[2]: r[12] for r in wb["lineas_propuestas"].iter_rows(min_row=2, values_only=True) if r[2] and r[12]}
-ALL = [r for r in wb["pokemon"].iter_rows(min_row=2, values_only=True) if r[1]]
+ROW = {}  # fila de cada carta en la hoja (= número del archivo que genera el card_generator: card_fronts/<fila>_<nombre>.png)
+ALL = []
+for _i, _r in enumerate(wb["pokemon"].iter_rows(min_row=2, values_only=True)):
+    if _r[1]:
+        ALL.append(_r); ROW[id(_r)] = _i
 rows = [r for r in ALL if not r[36] and r[35] != "legendary"]  # salvajes e iniciales (sin villanos ni legendarios)
 VILL = [r for r in ALL if r[36]]                                 # campaña 1: Soldados Pesadilla, Señores Demonio, Lucemon
 LEG = [r for r in ALL if r[35] == "legendary" and r[13] != "Noble"]  # Arcángeles y legendarios de los santuarios
@@ -74,7 +78,7 @@ for i, r in enumerate(rows):
          "move_name": r[29] or "Placaje", "move_type": ELEM.get((r[30] or elem).lower(), "Normal"),
          "move_attack_strength": str(int(r[31] or 0)), "move_effect": r[32] or "", "sp": name, "evo": evo}
     meta = {"elem": elem, "attr": (r[40] or "").lower(), "img": image(name), "lv": level(name),
-            "cls": r[11] or "", "pre": pre.get(name, "")}
+            "cls": r[11] or "", "pre": pre.get(name, ""), "row": ROW[id(r)]}
     base = {"n": name, "gm": "", "desc": f"Digimon {meta['cls']}".strip(), "b": r[12], "k": r[13], "d": d, "dg": meta}
     copies = max(1, int(r[37] or 1))
     cid += 1
@@ -108,7 +112,7 @@ def extra_card(r, enc, tags, sp, tier=None):
          "types": [ELEM.get(elem, "Normal")], "moves": learn, "evolve_into": None, "evolve_cost": None, "evo_costs": {},
          "evo_src": {}, "encounter_tier": enc, "move_name": r[29] or "Placaje", "move_type": ELEM.get((r[30] or elem).lower(), "Normal"),
          "move_attack_strength": str(int(r[31] or 0)), "move_effect": r[32] or "", "sp": sp, "evo": []}
-    meta = {"elem": elem, "attr": (r[40] or "").lower(), "img": image(name), "lv": level(name), "cls": r[11] or "", "pre": "",
+    meta = {"elem": elem, "attr": (r[40] or "").lower(), "img": image(name), "lv": level(name), "cls": r[11] or "", "pre": "", "row": ROW[id(r)],
             "art": f"{int(r[0]):03}" if isinstance(r[0], (int, float)) else str(r[0])}
     cid += 1
     c = {"n": name if enc == "Legendary" else f"{name} ({r[28]})", "gm": "", "desc": r[28] or "", "d": d, "dg": meta,

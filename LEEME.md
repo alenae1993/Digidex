@@ -56,9 +56,16 @@ La campaña del juego es la de `docs/campana_lucemon.md`, con las mismas reglas 
 
 Los villanos y legendarios salen del cube (`build_web.py` ahora también exporta `villains` y `legends`).
 
+### Cartas y fichas del mod
+
+- **Cartas Digimon:** son las mismas del juego de mesa (las que arma el `card_generator` del mod), no un dibujo aproximado. Están en `img/digimon_cartas.bin` (446 cartas a 300 px), con su índice en `digimon_cartas.js`. Cada carta del cube lleva su fila (`dg.row`), que es el número del archivo `card_fronts/<fila>_<nombre>.png`.
+- **Fichas del tablero:** los huertos de alimentos, arrecifes, aldeas, Puertas, Puerta de Cocytus, Altar de Yggdrasil, legendarios, Señores Demonio, alijos y artefactos usan las imágenes nuevas de `assets/tokens`. La tabla `herramientas/fichas_tablero.json` dice qué imagen de Sinnoh reemplaza cada una.
+- Para rehacer el paquete después de cambiar el cube o las fichas: generar las cartas con el `card_generator`, y luego `python herramientas/empaquetar_cartas.py <carpeta card_fronts> herramientas/fichas_tablero.json . <carpeta assets del mod>`.
+- Sin ilustración todavía (la carta muestra "?"): Soloogarmon, Zanbamon, Pulsemon, Fujitsumon y SantaAgumon (este último usa el dibujo anterior).
+
 ## Lo que todavía es de Sinnoh
 
-- El mapa: la forma del tablero y algunos nombres de lugares que el motor dibuja en el canvas.
+- El mapa: la forma del tablero, los colores de las casillas y los santuarios genéricos (las fichas ya son Digimon).
 - Las ilustraciones del panel del entrenador (mochila, Poké Balls, "Fragmentos del Corazón"): son imágenes del motor.
 - Las Tarjetas de Entrenador y la campaña Ultra Explosión.
 

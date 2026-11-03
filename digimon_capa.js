@@ -288,3 +288,40 @@ dgTexts = function (root) {
   const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); let n;
   while ((n = w.nextNode())) { let t = n.nodeValue; if (!_dgTextsTest.test(t)) continue; DG_TEXT.forEach(([re, s]) => { t = t.replace(re, s); }); if (t !== n.nodeValue) n.nodeValue = t; }
 };
+
+/* ---------- Cartas reales del mod y fichas nuevas del tablero ----------
+   digimon_cartas.js + img/digimon_cartas.bin (herramientas/empaquetar_cartas.py): cada carta Digimon se ve igual que en el
+   mod de mesa (la que arma el card_generator), y las fichas del mapa (huertos, arrecifes, aldeas, puertas, legendarios,
+   alijos y artefactos) usan las imágenes nuevas. Mientras el paquete carga, la carta se dibuja como antes. */
+let DG_CPACK = null;
+const DG_CIMG = new Map();
+function dgCartasPack() {
+  if (!DG_CPACK) DG_CPACK = fetch(new URL(`../Digidex/${DGCARTAS.pack}?v=${DGCARTAS.v}`, document.baseURI).href)
+    .then(r => r.ok ? r.arrayBuffer() : null).catch(() => null);
+  return DG_CPACK;
+}
+function dgPackImage(id, e) {
+  if (!DG_CIMG.has(id)) {
+    DG_CIMG.set(id, null);
+    dgCartasPack().then(buf => {
+      if (!buf) return;
+      const im = new Image();
+      im.onload = () => {
+        DG_CIMG.set(id, im);
+        if (typeof sinFillImages === "function") sinFillImages();
+        if (typeof sinRequestDraw === "function") sinRequestDraw();
+      };
+      im.src = URL.createObjectURL(new Blob([buf.slice(e[0], e[0] + e[1])], {type: "image/webp"}));
+    });
+  }
+  return DG_CIMG.get(id);
+}
+const _dgSinImage3 = sinImage;
+sinImage = function (key) {
+  if (typeof DGCARTAS !== "undefined" && key) {
+    const c = dgCardOf(key), row = c?.dg?.row;
+    const e = c ? (row != null ? DGCARTAS.cartas[row] : null) : DGCARTAS.fichas[key];
+    if (e) return dgPackImage(c ? "r" + row : key, e) || (c ? _dgSinImage3(key) : null);
+  }
+  return _dgSinImage3(key);
+};
