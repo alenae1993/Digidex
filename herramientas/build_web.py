@@ -24,7 +24,10 @@ D = json.load(open(DIGI, encoding="utf-8"))["D"]
 byn = {norm(x["n"]): x for x in D}
 wb = openpyxl.load_workbook(CUBE, data_only=True)
 prop = {r[2]: r[12] for r in wb["lineas_propuestas"].iter_rows(min_row=2, values_only=True) if r[2] and r[12]}
-rows = [r for r in wb["pokemon"].iter_rows(min_row=2, values_only=True) if r[1]]
+ALL = [r for r in wb["pokemon"].iter_rows(min_row=2, values_only=True) if r[1]]
+rows = [r for r in ALL if not r[36] and r[35] != "legendary"]  # salvajes e iniciales (sin villanos ni legendarios)
+VILL = [r for r in ALL if r[36]]                                 # campaña 1: Soldados Pesadilla, Señores Demonio, Lucemon
+LEG = [r for r in ALL if r[35] == "legendary" and r[13] != "Noble"]  # Arcángeles y legendarios de los santuarios
 
 
 def image(name):
@@ -90,9 +93,58 @@ for i, r in enumerate(rows):
     species.append({"name": name, "num": 2000 + i, "types": [ELEM.get(elem, "Normal")],
                     "bs": [int(stats[k] or 50) for k in ("hp", "atk", "def_", "spa", "spd", "spe")]})
 
-out = {"wild": wild, "starters": starters, "evolutions": evolutions, "species": species}
+# Villanos y legendarios de la campaña 1 (misma forma de carta; el motor los usa en vez del Equipo Galaxia y los legendarios).
+known = {x["name"] for x in species}
+VT = {"grunt": ("Grunt", "Galactic Grunt"), "commander": ("Commander", "Galactic Commander"), "boss": ("Boss", "Galactic Boss")}
+villains = []
+seen_form = set()
+
+
+def extra_card(r, enc, tags, sp, tier=None):
+    global cid
+    name, elem = r[1], (r[41] or "neutral").lower()
+    learn = [ELEM.get((m or "neutral").lower(), "Normal") for m in r[21:25]]
+    d = {"pokedex_name": name, "internal_name": name, "health": int(r[19]), "initiative": int(r[18]),
+         "types": [ELEM.get(elem, "Normal")], "moves": learn, "evolve_into": None, "evolve_cost": None, "evo_costs": {},
+         "evo_src": {}, "encounter_tier": enc, "move_name": r[29] or "Placaje", "move_type": ELEM.get((r[30] or elem).lower(), "Normal"),
+         "move_attack_strength": str(int(r[31] or 0)), "move_effect": r[32] or "", "sp": sp, "evo": []}
+    meta = {"elem": elem, "attr": (r[40] or "").lower(), "img": image(name), "lv": level(name), "cls": r[11] or "", "pre": "",
+            "art": f"{int(r[0]):03}" if isinstance(r[0], (int, float)) else str(r[0])}
+    cid += 1
+    c = {"n": name if enc == "Legendary" else f"{name} ({r[28]})", "gm": "", "desc": r[28] or "", "d": d, "dg": meta,
+         "cid": cid, "img": f"dg{cid}", "img2": f"dg{cid}", "tags": tags}
+    if r[36]:
+        c["dg"]["trainer"] = r[36]
+    if tier:
+        c.update(tier=tier, b=r[12], k=r[13])
+    if sp not in known:
+        known.add(sp)
+        species.append({"name": sp, "num": 3000 + len(species), "types": [ELEM.get(elem, "Normal")],
+                        "bs": [int(v or 50) for v in r[4:10]]})
+    return c
+
+
+for r in VILL:
+    enc, tag = VT[r[35]]
+    villains.append(extra_card(r, enc, [tag, "Space"], r[1]))
+legends = []
+for r in LEG:
+    form = (r[39] or 0) >= 2
+    if form and r[1] in ("Seraphimon", "Ophanimon", "Cherubimon"):
+        sp = r[1] + "-Origin"            # la segunda fase de los Arcángeles (como Dialga/Palkia/Giratina Origen)
+    elif form:
+        continue                          # otras formas (Imperialdramon, Dukemon): solo en el mod de mesa
+    else:
+        sp = r[1]
+    c = extra_card(r, "Legendary", [t for t in [r[13], "Legendary Encounter Card", r[12]] if t], sp, tier="L")
+    if sp.endswith("-Origin"):
+        c["d"]["pokedex_name"] = c["n"] = f"{r[1]} {r[28]}"   # p. ej. "Ophanimon Modo Caído"
+    legends.append(c)
+
+out = {"wild": wild, "starters": starters, "evolutions": evolutions, "species": species, "villains": villains, "legends": legends}
 js = ("// Cartas Digimon para Leyendas (Modo Cartas). Generado por build_web.py desde sinnoh_cube.xlsx: no editar a mano.\n"
       "const DGDATA=" + json.dumps(out, ensure_ascii=False, separators=(",", ":")) + ";\n")
 open(OUT, "w", encoding="utf-8").write(js)
+print("villanos:", len(villains), "legendarios:", len(legends))
 print("salvajes:", {k: len(v) for k, v in wild.items()}, "iniciales:", len(starters), "evoluciones:", len(evolutions),
       "bytes:", len(js.encode()))

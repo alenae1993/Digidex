@@ -35,7 +35,7 @@ D = json.load(open(DIGI, encoding="utf-8"))["D"]
 byn = {norm(x["n"]): x for x in D}
 wb_v = openpyxl.load_workbook(CUBE, data_only=True)
 prop = {r[2]: r[3] for r in wb_v["lineas_propuestas"].iter_rows(min_row=2, values_only=True) if r[2]}
-rows = [r for r in wb_v["pokemon"].iter_rows(min_row=2, values_only=True) if r[1]]
+rows = [r for r in wb_v["pokemon"].iter_rows(min_row=2, values_only=True) if r[1] and not r[36] and r[35] != "legendary"]  # sin villanos ni legendarios
 
 
 def digi(name):
